@@ -1,48 +1,74 @@
-import { useState } from 'react';
-import reactLogo from '../assets/react.svg';
-import blockletLogo from '../assets/blocklet.svg';
-import viteLogo from '../assets/vite.svg';
-import './home.css';
+import { useState, useEffect } from 'react';
+import ProfileDisplay from '../components/ProfileDisplay';
+import ProfileEdit from '../components/ProfileEdit';
 import api from '../libs/api';
+import './home.css';
 
 function Home() {
-  const [count, setCount] = useState(0);
+  const [user, setUser] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  async function getApiData() {
-    const { data } = await api.get('/api/data');
-    const { message } = data;
-    alert(`Message from api: ${message}`);
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  const fetchUser = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get('/api/users/1'); // 假设默认用户 ID 为 1
+      setUser(response.data.user);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      setError('Failed to load user profile. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = async (updatedUser) => {
+    try {
+      await api.put(`/api/users/${user.id}`, updatedUser);
+      setUser(updatedUser);
+      setIsEditing(false);
+      setError(null);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      setError('Failed to update user profile. Please try again.');
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
+
+  if (!user) {
+    return <div>No user found.</div>;
   }
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-        <a href="https://www.arcblock.io/docs/blocklet-developer/getting-started" target="_blank" rel="noreferrer">
-          <img src={blockletLogo} className="logo blocklet" alt="Blocklet logo" />
-        </a>
-      </div>
-      <h1>Vite + React + Blocklet</h1>
-      <div className="card">
-        <button type="button" onClick={() => setCount((currentCount) => currentCount + 1)}>
-          count is {count}
-        </button>
-        <br />
-        <br />
-        <button type="button" onClick={getApiData}>
-          Get API Data
-        </button>
-        <p>
-          Edit <code>src/app.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">Click on the Vite and React logos to learn more</p>
-    </>
+    <div className="profile-container">
+      <h1>User Profile</h1>
+      {isEditing ? (
+        <ProfileEdit user={user} onSave={handleSave} onCancel={handleCancel} />
+      ) : (
+        <ProfileDisplay user={user} onEdit={handleEdit} />
+      )}
+    </div>
   );
 }
 
